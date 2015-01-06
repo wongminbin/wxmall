@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:security="http://www.springframework.org/schema/security"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:mvc="http://www.springframework.org/schema/mvc"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+          http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+          http://www.springframework.org/schema/tx
+          http://www.springframework.org/schema/tx/spring-tx-3.0.xsd
+          http://www.springframework.org/schema/security
+          http://www.springframework.org/schema/security/spring-security.xsd
+          http://www.springframework.org/schema/context
+          http://www.springframework.org/schema/context/spring-context-3.0.xsd
+          http://www.springframework.org/schema/aop
+          http://www.springframework.org/schema/aop/spring-aop-3.0.xsd
+          http://www.springframework.org/schema/mvc
+          http://www.springframework.org/schema/mvc/spring-mvc-3.0.xsd"
+       default-autowire="byName" default-lazy-init="false">
+    <!-- 注意上面的default-autowire="byName"，如果没有这个声明那么HibernateDaoSupport中的sessionFactory不会被注入 -->
+
+    <!-- 定义受环境影响易变的变量 -->
+    <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+        <property name="locations">
+            <list>
+                <value>classpath:web.properties</value>
+            </list>
+        </property>
+    </bean>
+
+    <!-- 约定优于配置，约定优于配置 -->
+    <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource" init-method="init" destroy-method="close"> 
+    
+	    <property name="url" value="${jdbc.url}" />
+	    <property name="username" value="${jdbc.username}" />
+	    <property name="password" value="${jdbc.password}" />
+	    
+	    <property name="maxActive" value="200" />
+	    <property name="initialSize" value="10" />
+	    <property name="maxWait" value="60000" />
+	    <property name="minIdle" value="10" />
+	 
+	    <property name="timeBetweenEvictionRunsMillis" value="60000" />
+	    <property name="minEvictableIdleTimeMillis" value="300000" />
+	 
+	    <property name="filters" value="stat" />
+	    <property name="validationQuery" value="SELECT 'x'" />
+	    <property name="testWhileIdle" value="true" />
+	    <property name="testOnBorrow" value="false" />
+	    <property name="testOnReturn" value="false" />
+	</bean>
+
+    <bean id="sessionFactory" class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+        <property name="dataSource" ref="dataSource"/>
+
+        <property name="packagesToScan">
+            <list>
+                <value>${hibernate.scanpackages}</value>
+            </list>
+        </property>
+        
+        <property name="hibernateProperties">
+         <value>
+               hibernate.dialect=${hibernate.dialect}
+               hibernate.connection.driver_class=${jdbc.driverclass}
+               hibernate.connection.url=${jdbc.url}
+               hibernate.connection.username=${jdbc.username}
+               hibernate.connection.password=${jdbc.password}
+               hibernate.hbm2ddl.auto=${hiberante.hbm2ddl}
+               hibernate.show_sql=${hibernate.showsql}
+               hibernate.format_sql=${hibernate.formatsql}
+               hibernate.cache.use_second_level_cache=${hibernate.secondlevelcache}
+               hibernate.cache.use_query_cache=${hibernate.querycache}
+               hibernate.cache.region.factory_class=${hibernate.classcache}
+           </value>
+     	</property>
+
+    </bean>
+
+    <!-- 事务配置 -->
+    <bean id="transactionManager" class="org.springframework.orm.hibernate4.HibernateTransactionManager">
+        <property name="sessionFactory" ref="sessionFactory"/>
+    </bean>
+    
+    <tx:advice id="txadvice">
+        <tx:attributes>
+            <tx:method name="get*" read-only="true"/>
+            <tx:method name="query*" read-only="true"/>
+            <tx:method name="*" propagation="REQUIRED" rollback-for="Exception"/>
+        </tx:attributes>
+    </tx:advice>
+
+    <aop:config>
+        <aop:advisor
+                pointcut="execution(* com.wong.wxmall.service.impl.*ServiceImpl.*(..))"
+                advice-ref="txadvice"/>
+    </aop:config>
+    
+    <context:component-scan base-package="com.wong"/> 
+    
+    <!-- 使用默认的Servlet来响应静态文件  -->
+    <mvc:default-servlet-handler/>
+    
+    <!-- 开启AOP切面注解  -->
+    <aop:aspectj-autoproxy proxy-target-class="true"/>
+
+</beans>
